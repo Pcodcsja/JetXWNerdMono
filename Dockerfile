@@ -9,19 +9,19 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # Copy project files
-COPY pyproject.toml .
+COPY pyproject.toml uv.lock README.md config.yaml ./
 COPY src/ src/
 COPY build.py .
 
 # Install dependencies
-RUN uv sync --no-dev
+RUN uv sync --locked --no-dev
 
 # Create mount points
 VOLUME /app/fonts
 VOLUME /app/output
 
 # Default entrypoint
-ENTRYPOINT ["uv", "run", "python", "build.py", "--fonts-dir", "/app/fonts", "--output-dir", "/app/output"]
+ENTRYPOINT ["uv", "run", "--no-sync", "python", "build.py", "--fonts-dir", "/app/fonts", "--output-dir", "/app/output/fonts"]
 
 # Default command (can be overridden)
 CMD []

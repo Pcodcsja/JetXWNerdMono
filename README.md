@@ -16,6 +16,19 @@ JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 CJK Monospace Font
 - YAML configuration support with CLI override
 - Multi-weight Chinese font mapping (optional)
 
+## Version 1.6 (2026-10-21)
+
+- Fix upright CJK outlines in Italic, MediumItalic and BoldItalic by matching the English source slant (currently 9° to the right), preserving the 2:1 advance widths.
+- Generate CJK obliques by shearing the outlines; compensate only for the angle difference when the CJK source already has a slant.
+
+## Version 1.5 (2026-10-21)
+
+- Correct fullwidth braces and halfwidth kana advances; normalize zero-width characters.
+- Import kana, Hangul, compatibility ideographs and CJK extensions H/I where the source font contains them. Coverage can differ between weights because they use different source fonts.
+- Merge composites independently of source glyph names and validate widths by Unicode character class.
+- Read Web font names and weights from built font metadata; empty inputs and failed builds return errors.
+- Pin the Web tooling with an npm lockfile and a SHA-256-verified WASM core. Run `uv run python scripts/install_split.py --split` to install and generate Web fonts.
+
 ## Download
 
 ### Quick Selection
@@ -72,9 +85,8 @@ uv sync
 # Build all styles
 uv run python build.py
 
-# Font Splitting (Web Fonts)
-# Default input: output/fonts, output: output/split
-uv run python split.py
+# Install the locked Web font tooling and generate subsets (requires Node.js)
+uv run python scripts/install_split.py --split
 ```
 
 ### Using Docker
@@ -100,9 +112,9 @@ docker run --rm \
 
 Place the following fonts in the `fonts/` directory:
 
-### JetBrains Mono NerdFont (v3.4.0)
+### JetBrains Mono NerdFont (v3.5.1)
 
-Download from [Nerd Fonts release](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip), extract and place these files:
+Download from [Nerd Fonts release](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip), extract and place these files:
 
 - `JetBrainsMonoNLNerdFontMono-Regular.ttf`
 - `JetBrainsMonoNLNerdFontMono-Medium.ttf`
@@ -111,15 +123,15 @@ Download from [Nerd Fonts release](https://github.com/ryanoasis/nerd-fonts/relea
 - `JetBrainsMonoNLNerdFontMono-Bold.ttf`
 - `JetBrainsMonoNLNerdFontMono-BoldItalic.ttf`
 
-### LXGW WenKai Mono GB Screen (v1.521)
+### LXGW WenKai Mono GB Screen (v1.530)
 
-Download directly: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.521/LXGWWenKaiMonoGBScreen.ttf)
+Download directly: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.530/LXGWWenKaiMonoGBScreen.ttf)
 
 - `LXGWWenKaiMonoGBScreen.ttf` - Used for Regular/Italic/Medium/MediumItalic styles
 
-### LXGW ZhenKai GB (for Bold weights)
+### LXGW ZhenKai GB (v0.825, for Bold weights)
 
-Download directly: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases)
+Download directly: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases/download/v0.825/LXGWZhenKaiGB-Regular.ttf)
 
 - `LXGWZhenKaiGB-Regular.ttf` - Used for Bold/BoldItalic styles to provide heavier CJK strokes
 
@@ -134,7 +146,7 @@ The project includes a `split.py` script that uses [cn-font-split](https://githu
 
 ```bash
 # Install cn-font-split (requires Node.js)
-npm install -g cn-font-split
+uv run python scripts/install_split.py
 
 # Run split script (processes all fonts in output/fonts)
 uv run python split.py
@@ -210,7 +222,7 @@ The `config.yaml` file provides centralized configuration for the build process:
 # Font metadata
 font:
   family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
+  version: "1.6"
   author: "lvbibir"
   copyright: "Copyright (c) 2024 lvbibir"
   description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio."

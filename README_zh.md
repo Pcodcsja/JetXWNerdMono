@@ -16,6 +16,19 @@ JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 中英文等宽字体
 - 支持 YAML 配置文件, 可通过命令行覆盖
 - 支持多字重中文字体映射 (可选)
 
+## 1.6 更新 (2026-10-21)
+
+- 修复 Italic、MediumItalic、BoldItalic 的中文未倾斜问题：按英文源字体的倾角变换中文轮廓，当前为向右 9°，并保持 2:1 字宽。
+- 中文使用轮廓倾斜生成；若中文源字体已有倾角，只补偿与英文的倾角差。
+
+## 1.5 更新 (2026-10-21)
+
+- 修复全角大括号、半角片假名字宽，并将零宽字符的占位宽度归零。
+- 合入源字体已有的假名、韩文、兼容汉字及汉字扩展 H/I；不同字重使用不同源字体，字符覆盖可能有差别。
+- 合并时独立处理复合字形与同名字形，并按 Unicode 字符类别校验字宽。
+- 分包从字体元数据读取名称和字重；空输入或构建失败会返回错误。
+- 通过 npm 锁文件与 WASM 核心 SHA-256 固定分包环境。执行 `uv run python scripts/install_split.py --split` 可安装后自动生成 Web 字体。
+
 ## 下载
 
 ### 快速选择
@@ -72,9 +85,8 @@ uv sync
 # 构建所有字重
 uv run python build.py
 
-# 字体分包 (Web 字体)
-# 默认读取 output/fonts 目录下的字体, 并输出到 output/split 目录
-uv run python split.py
+# 安装固定版本的分包工具并生成 Web 字体（需要 Node.js）
+uv run python scripts/install_split.py --split
 ```
 
 ### 使用 Docker
@@ -100,9 +112,9 @@ docker run --rm \
 
 请将以下字体文件放置在 `fonts/` 目录:
 
-### JetBrains Mono NerdFont (v3.4.0)
+### JetBrains Mono NerdFont (v3.5.1)
 
-从 [Nerd Fonts 发布页面](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip) 下载,解压后放置以下文件:
+从 [Nerd Fonts 发布页面](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip) 下载,解压后放置以下文件:
 
 - `JetBrainsMonoNLNerdFontMono-Regular.ttf`
 - `JetBrainsMonoNLNerdFontMono-Medium.ttf`
@@ -111,15 +123,15 @@ docker run --rm \
 - `JetBrainsMonoNLNerdFontMono-Bold.ttf`
 - `JetBrainsMonoNLNerdFontMono-BoldItalic.ttf`
 
-### 霞鹜文楷屏幕阅读版等宽 GB (v1.521)
+### 霞鹜文楷屏幕阅读版等宽 GB (v1.530)
 
-直接下载: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.521/LXGWWenKaiMonoGBScreen.ttf)
+直接下载: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.530/LXGWWenKaiMonoGBScreen.ttf)
 
 - `LXGWWenKaiMonoGBScreen.ttf` - 用于 Regular/Italic/Medium/MediumItalic 字重
 
-### 霞鹜臻楷 GB (用于 Bold 字重)
+### 霞鹜臻楷 GB (v0.825, 用于 Bold 字重)
 
-直接下载: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases)
+直接下载: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases/download/v0.825/LXGWZhenKaiGB-Regular.ttf)
 
 - `LXGWZhenKaiGB-Regular.ttf` - 用于 Bold/BoldItalic 字重, 提供更粗的中文笔画
 
@@ -134,7 +146,7 @@ docker run --rm \
 
 ```bash
 # 安装 cn-font-split (需要 Node.js)
-npm install -g cn-font-split
+uv run python scripts/install_split.py
 
 # 运行分包脚本 (自动处理 output/fonts 下的所有字体)
 uv run python split.py
@@ -210,7 +222,7 @@ uv run python -m http.server 8000
 # 字体元数据
 font:
   family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
+  version: "1.6"
   author: "lvbibir"
   copyright: "Copyright (c) 2024 lvbibir"
   description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio."

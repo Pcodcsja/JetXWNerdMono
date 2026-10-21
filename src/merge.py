@@ -1,5 +1,6 @@
 """Core font merging logic for JetBrainsLxgwNerdMono."""
 
+import math
 from typing import Set
 
 from fontTools.ttLib import TTFont
@@ -55,135 +56,105 @@ def merge_fonts(
     cn_font_path: str,
     config: FontConfig,
 ) -> TTFont:
-    """Merge CJK glyphs from cn_font into base_font.
+    """Import CJK outlines by codepoint, preserving unrelated base glyphs.
 
-    The base font (JetBrains Mono NerdFont) provides:
-    - English characters
-    - NerdFont icons
-
-    The CN font (LXGW WenKai Mono) provides:
-    - CJK characters
-
-    Args:
-        base_font_path: Path to JetBrains Mono NerdFont
-        cn_font_path: Path to LXGW WenKai Mono
-        config: FontConfig object
-
-    Returns:
-        Merged TTFont object
+    Flatten source composites before scaling so references, component offsets,
+    and glyph-name collisions cannot depend on the destination glyph table.
     """
+    import copy
+    from fontTools.ttLib.tables._g_l_y_f import Glyph
+    from fontTools.ttLib.tables._c_m_a_p import CmapSubtable
+    from fontTools.ttLib.tables.ttProgram import Program
+
     print(f"  Loading base font: {base_font_path}")
     base_font = TTFont(base_font_path)
-    print(f"  Loading CN font: {cn_font_path}")
-    cn_font = TTFont(cn_font_path)
+    try:
+        with TTFont(cn_font_path) as cn_font:
+            base_cmap = dict(base_font.getBestCmap() or {})
+            space = base_cmap.get(0x20)
+            if not space or base_font["hmtx"][space][0] != config.en_width:
+                raise ValueError("en_width must match the English source font's space advance")
+            source_entries = get_cjk_cmap_entries(cn_font, config)
+            if not source_entries:
+                raise ValueError("The CJK source font has no supported CJK codepoints")
+            base_glyf = base_font["glyf"]
+            source_glyf = cn_font["glyf"]
+            order = list(base_font.getGlyphOrder())
+            used_names = set(order)
+            imported = {}
+            scale = base_font["head"].unitsPerEm / cn_font["head"].unitsPerEm * config.visual_scale
+            # OpenType uses negative angles for a rightward slant. Apply only
+            # the difference so an already slanted CJK source is not tilted twice.
+            target_angle = base_font["post"].italicAngle
+            source_angle = cn_font["post"].italicAngle
+            shear = math.tan(math.radians(source_angle)) - math.tan(math.radians(target_angle))
+            print(f"  Importing {len(source_entries)} CJK mappings at {scale:.4f}x")
+            if shear:
+                print(f"  Matching CJK slant: {source_angle:g} to {target_angle:g} degrees")
+            for cp, source_name in sorted(source_entries.items()):
+                width = config.codepoint_width(cp)
+                key = (source_name, width)
+                if key not in imported:
+                    name = source_name
+                    if name in used_names:
+                        name = f"{source_name}.cjk"
+                    while name in used_names:
+                        name += ".cjk"
+                    source = source_glyf[source_name]
+                    glyph = Glyph()
+                    if source.numberOfContours:
+                        coords, ends, flags = source.getCoordinates(source_glyf)
+                        glyph.coordinates = copy.deepcopy(coords)
+                        glyph.endPtsOfContours = list(ends)
+                        glyph.flags = copy.copy(flags)
+                        glyph.numberOfContours = len(ends)
+                        glyph.coordinates.scale((scale, scale))
+                        if shear:
+                            glyph.coordinates.transform(((1, 0), (shear, 1)))
+                        glyph.program = Program()
+                        glyph.program.fromBytecode(b"")
+                        glyph.recalcBounds(base_glyf)
+                        lsb = glyph.xMin
+                    else:
+                        glyph.numberOfContours = 0
+                        lsb = 0
+                    base_glyf[name] = glyph
+                    base_font["hmtx"][name] = (width, lsb)
+                    order.append(name)
+                    used_names.add(name)
+                    imported[key] = name
+                base_cmap[cp] = imported[key]
 
-    # Get existing glyphs in base font (to avoid overwriting)
-    base_glyph_names = set(base_font.getGlyphOrder())
-
-    # Get CJK glyphs and cmap entries from CN font
-    cjk_glyphs = get_cjk_glyphs(cn_font, config)
-    cjk_cmap = get_cjk_cmap_entries(cn_font, config)
-
-    print(f"  Found {len(cjk_glyphs)} CJK glyphs in CN font")
-
-    # Get font tables
-    base_glyf = base_font["glyf"]
-    cn_glyf = cn_font["glyf"]
-    base_hmtx = base_font["hmtx"]
-    cn_hmtx = cn_font["hmtx"]
-    base_cmap = base_font["cmap"].getBestCmap()
-
-    # Calculate scaling factors
-    base_upm = base_font["head"].unitsPerEm
-    cn_upm = cn_font["head"].unitsPerEm
-
-    # UPM normalization scale with visual adjustment
-    # visual_scale adjusts the final glyph size (1.08 = 8% larger)
-    upm_scale = base_upm / cn_upm  # e.g., 1000 / 2048 = 0.4883
-    combined_scale = upm_scale * config.visual_scale
-    print(f"  Scaling CN glyphs by {combined_scale:.4f} (UPM: {cn_upm} -> {base_upm}, visual: {config.visual_scale:.2f}x)")
-
-    glyphs_added = []
-
-    for glyph_name in cjk_glyphs:
-        # Skip if glyph already exists in base font
-        if glyph_name in base_glyph_names:
-            continue
-
-        # Skip if glyph doesn't exist in cn font's glyf table
-        if glyph_name not in cn_glyf.glyphs:
-            continue
-
-        # Copy glyph outline (deep copy to avoid modifying source font)
-        # IMPORTANT: Use cn_glyf[name] instead of cn_glyf.glyphs[name]
-        # The latter returns undecompiled glyph without coordinates attribute
-        import copy
-        glyph = copy.deepcopy(cn_glyf[glyph_name])
-        base_glyf.glyphs[glyph_name] = glyph
-
-        # Scale glyph to fit target width
-        if hasattr(glyph, "coordinates") and glyph.numberOfContours > 0:
-            # Ensure bounds are calculated before scaling
-            if not hasattr(glyph, 'xMin') or glyph.xMin is None:
-                glyph.recalcBounds(base_glyf)
-
-            # Apply combined scaling
-            glyph.coordinates.scale((combined_scale, combined_scale))
-            glyph.recalcBounds(base_glyf)
-
-        # Set advance width to cn_width (1200) for 2:1 ratio
-        # Preserve original LSB ratio for proper glyph positioning
-        orig_width, orig_lsb = cn_hmtx[glyph_name]
-        scaled_lsb = int(orig_lsb * combined_scale)
-        base_hmtx.metrics[glyph_name] = (config.cn_width, scaled_lsb)
-
-        glyphs_added.append(glyph_name)
-
-    print(f"  Added {len(glyphs_added)} new glyphs")
-
-    if not glyphs_added:
-        cn_font.close()
+            if len(order) > 65535:
+                raise ValueError(f"Too many TrueType glyphs: {len(order)} (maximum 65535)")
+            base_font.setGlyphOrder(order)
+            base_font["maxp"].numGlyphs = len(order)
+            # All Unicode consumers must see the same mapping. Do not alter
+            # legacy Mac encodings or format-14 variation-selector tables.
+            tables = base_font["cmap"].tables
+            if not any(t.format == 12 and t.isUnicode() for t in tables):
+                table = CmapSubtable.newSubtable(12)
+                table.platformID, table.platEncID, table.language = 3, 10, 0
+                table.cmap = {}
+                tables.append(table)
+            if not any(t.format == 4 and t.isUnicode() for t in tables):
+                table = CmapSubtable.newSubtable(4)
+                table.platformID, table.platEncID, table.language = 3, 1, 0
+                table.cmap = {}
+                tables.append(table)
+            for table in tables:
+                if table.isUnicode() and table.format in (4, 12):
+                    table.cmap = {cp: name for cp, name in base_cmap.items()
+                                  if table.format == 12 or cp < 0xFFFF}
+            base_font["hhea"].advanceWidthMax = max(w for w, _ in base_font["hmtx"].metrics.values())
+            merge_os2_ranges(base_font, cn_font)
+            base_font["OS/2"].recalcUnicodeRanges(base_font)
+            base_font["OS/2"].recalcCodePageRanges(base_font)
+            print(f"  Added {len(imported)} outlines ({len(order)} glyphs total)")
         return base_font
-
-    # Update glyph order
-    new_glyph_order = base_font.getGlyphOrder() + glyphs_added
-    base_font.setGlyphOrder(new_glyph_order)
-    base_font["maxp"].numGlyphs = len(new_glyph_order)
-
-    # Update cmap with new glyphs
-    # IMPORTANT: Must update all cmap subtables, not just getBestCmap()
-    # Office applications may only read format=4 table for BMP characters
-    glyphs_added_set = set(glyphs_added)
-    for table in base_font["cmap"].tables:
-        # Only update tables that map Unicode codepoints
-        if table.platformID == 3 and table.platEncID in (1, 10):  # Windows Unicode BMP/Full
-            for codepoint, glyph_name in cjk_cmap.items():
-                if glyph_name in glyphs_added_set:
-                    # format=4 only supports BMP (U+0000-U+FFFF)
-                    if table.format == 4 and codepoint > 0xFFFF:
-                        continue
-                    if codepoint not in table.cmap:
-                        table.cmap[codepoint] = glyph_name
-        elif table.platformID == 0:  # Unicode platform
-            for codepoint, glyph_name in cjk_cmap.items():
-                if glyph_name in glyphs_added_set:
-                    if table.format == 4 and codepoint > 0xFFFF:
-                        continue
-                    if codepoint not in table.cmap:
-                        table.cmap[codepoint] = glyph_name
-
-    # Update hhea table
-    if "hhea" in base_font:
-        base_font["hhea"].advanceWidthMax = max(
-            base_font["hhea"].advanceWidthMax, config.cn_width
-        )
-        base_font["hhea"].numberOfHMetrics = len(base_hmtx.metrics)
-
-    # Merge OS/2 ranges from CN font to base font
-    merge_os2_ranges(base_font, cn_font)
-
-    cn_font.close()
-    return base_font
+    except Exception:
+        base_font.close()
+        raise
 
 
 def scale_nerd_icons(font: TTFont, config: FontConfig) -> None:
@@ -372,7 +343,7 @@ def center_cjk_glyphs(font: TTFont, config: FontConfig) -> None:
     skipped_count = 0
     paired_count = 0
 
-    for glyph_name in cjk_glyphs:
+    for glyph_name in sorted(cjk_glyphs):
         if glyph_name not in glyf.glyphs:
             continue
 

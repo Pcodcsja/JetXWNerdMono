@@ -3,7 +3,7 @@
 # Font metadata
 font:
   family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
+  version: "1.6"
   author: "lvbibir"
   copyright: "Copyright (c) 2024 lvbibir"
   description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio. English from JetBrains Mono, CJK from LXGW WenKai."
@@ -12,6 +12,11 @@ font:
   license_url: "https://openfontlicense.org"
 
 # Source fonts directory
+#
+# Bundled source versions:
+# - JetBrains Mono Nerd Font v3.5.1
+# - LXGW WenKai Mono GB Screen v1.530
+# - LXGW ZhenKai GB v0.825 (latest release with the GB-Regular asset)
 fonts_dir: "fonts"
 
 # Styles configuration

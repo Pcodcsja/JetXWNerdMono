@@ -61,7 +61,7 @@ wheels = [
 
 [[package]]
 name = "jetbrains-lxgw-nerd-mono"
-version = "1.0.0"
+version = "1.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "fonttools" },

@@ -1,8 +1,9 @@
 """Utility functions for font manipulation."""
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from fontTools.ttLib import TTFont
+from .config import FontConfig, is_zero_width
 
 
 def set_font_name(
@@ -72,6 +73,7 @@ def update_font_names(
         license_url: License URL (NameID 14)
     """
     unique_id = f"{version_str};JBLXGW;{postscript_name}"
+    font["head"].fontRevision = float(version_str.removeprefix("Version ").strip())
 
     # English names (Language ID 0x409)
     # NameID 0: Copyright
@@ -180,7 +182,8 @@ def is_cjk_codepoint(
 
 
 def verify_glyph_width(
-    font: TTFont, expected_widths: List[int], file_name: str | None = None
+    font: TTFont, expected_widths: List[int], file_name: str | None = None,
+    config: FontConfig | None = None,
 ) -> None:
     """Verify all glyph widths are in expected values.
 
@@ -200,6 +203,12 @@ def verify_glyph_width(
         if width not in expected_widths and width != 0:
             unexpected.append((name, width))
 
+    if config is not None:
+        for cp, name in (font.getBestCmap() or {}).items():
+            expected = config.codepoint_width(cp)
+            if expected is not None and hmtx[name][0] != expected:
+                unexpected.append((f"U+{cp:04X} {name} (expected {expected})", hmtx[name][0]))
+
     if not unexpected:
         print(f"Verified glyph widths in {file_name or 'font'}")
         return
@@ -211,3 +220,33 @@ def verify_glyph_width(
         f"Found {len(unexpected)} glyphs with unexpected widths "
         f"(expected {expected_widths}):\n{sample_str}"
     )
+
+
+def normalize_zero_width_glyphs(font: TTFont) -> None:
+    """Separate zero-width aliases from visible glyphs before setting metrics."""
+    import copy
+    cmap = font.getBestCmap() or {}
+    visible = {gn for cp, gn in cmap.items() if not is_zero_width(cp)}
+    remapped = {}
+    # glyf.__setitem__ also appends to its live glyph order. Work on a copy
+    # so cloned aliases occur only once when the order is installed below.
+    order = list(font.getGlyphOrder())
+    for cp, name in sorted(cmap.items()):
+        if not is_zero_width(cp):
+            continue
+        target = name
+        if name in visible:
+            target = remapped.get(name)
+            if target is None:
+                target = f"{name}.zero"
+                while target in font["glyf"].glyphs:
+                    target += ".zero"
+                font["glyf"][target] = copy.deepcopy(font["glyf"][name])
+                order.append(target)
+                remapped[name] = target
+            for table in font["cmap"].tables:
+                if table.isUnicode() and hasattr(table, "cmap") and cp in table.cmap:
+                    table.cmap[cp] = target
+        glyph = font["glyf"][target]
+        font["hmtx"][target] = (0, glyph.xMin if glyph.numberOfContours else 0)
+    font.setGlyphOrder(order)
