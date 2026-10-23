@@ -12,6 +12,8 @@ venv/
 ENV/
 env/
 .uv/
+_tools/
+_npm-cache/
 
 # Build outputs
 output/

@@ -1,8 +1,8 @@
-# JetBrainsLxgwNerdMono
+# Pico
 
 [English](README.md) | [中文](README_zh.md)
 
-JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 CJK Monospace Font
+Pico is an independently maintained 2:1 CJK monospace derivative by Pcodcsja, based on JetBrains Mono Nerd Fonts, LXGW WenKai Mono and LXGW ZhenKai. It includes character-width adjustments, CJK obliques and web subsets. Pico is not an official release of the source projects.
 
 ## Features
 
@@ -16,19 +16,47 @@ JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 CJK Monospace Font
 - YAML configuration support with CLI override
 - Multi-weight Chinese font mapping (optional)
 
+## Version 1.8 (2026-10-23)
+
+- Fix legacy Windows style linking: four RIBBI faces use `Pico`; Medium and Medium Italic use `Pico Medium`. Typographic family names remain `Pico` for all six faces.
+- Add distinct Simplified Chinese full names and style names for all six faces.
+- Synchronize Windows/macOS bold, italic and regular flags with the legacy grouping.
+
+Each face has a distinct English full name (for example `Pico Bold Italic`) and a Simplified Chinese full name for Windows preview. Applications that group by typographic family may show `Pico` as the family and expose the weight and italic face in a separate style selector.
+
+## Version 1.7 (2026-10-23)
+
+- Rename the derivative to **Pico**, including internal names, TTF filenames, WOFF2 families, previews and packaging examples.
+- Preserve both source fonts' copyright, trademark and designer attribution; identify the derivative maintainer separately.
+- Bundle OFL, attribution and component license notices with desktop and web output.
+- Keep the repository URL; update old font filenames and CSS references to `Pico`.
+
+## Version 1.6 (2026-10-21)
+
+- Fix upright CJK outlines in Italic, MediumItalic and BoldItalic by matching the English source slant (currently 9° to the right), preserving the 2:1 advance widths.
+- Generate CJK obliques by shearing the outlines; compensate only for the angle difference when the CJK source already has a slant.
+
+## Version 1.5 (2026-10-21)
+
+- Correct fullwidth braces and halfwidth kana advances; normalize zero-width characters.
+- Import kana, Hangul, compatibility ideographs and CJK extensions H/I where the source font contains them. Coverage can differ between weights because they use different source fonts.
+- Merge composites independently of source glyph names and validate widths by Unicode character class.
+- Read Web font names and weights from built font metadata; empty inputs and failed builds return errors.
+- Pin the Web tooling with an npm lockfile and a SHA-256-verified WASM core. Run `uv run python scripts/install_split.py --split` to install and generate Web fonts.
+
 ## Download
 
 ### Quick Selection
 
 | Use Case | Download |
 |----------|----------|
-| 💻 **Local Install** (Editor/IDE/Terminal) | `JetBrainsLxgwNerdMono.zip` |
-| 🌐 **Web Usage** (Web Fonts) | `JetBrainsLxgwNerdMono-split-woff2.zip` |
+| 💻 **Local Install** (Editor/IDE/Terminal) | `Pico.zip` |
+| 🌐 **Web Usage** (Web Fonts) | `Pico-split-woff2.zip` |
 | 📄 **Single Weight Only** | Choose the corresponding `.ttf` file |
 
 ### File Description
 
-#### `JetBrainsLxgwNerdMono.zip`
+#### `Pico.zip`
 > **Recommended for most users**
 
 Contains 6 complete TTF font files with all weights, suitable for:
@@ -38,7 +66,7 @@ Contains 6 complete TTF font files with all weights, suitable for:
 
 Included weights: Regular, Medium, Italic, MediumItalic, Bold, BoldItalic
 
-#### `JetBrainsLxgwNerdMono-split-woff2.zip`
+#### `Pico-split-woff2.zip`
 > **For Web developers**
 
 WOFF2 format optimized with [cn-font-split](https://github.com/KonghaYao/cn-font-split), suitable for:
@@ -54,12 +82,12 @@ If you only need a specific weight, download the corresponding file directly:
 
 | File | Weight | Use Case |
 |------|--------|----------|
-| `JetBrainsLxgwNerdMono-Regular.ttf` | Regular | Daily coding (Recommended) |
-| `JetBrainsLxgwNerdMono-Medium.ttf` | Medium | Prefer slightly bolder font |
-| `JetBrainsLxgwNerdMono-Bold.ttf` | Bold | Headings/emphasis |
-| `JetBrainsLxgwNerdMono-Italic.ttf` | Italic | Comments/variables |
-| `JetBrainsLxgwNerdMono-MediumItalic.ttf` | Medium Italic | - |
-| `JetBrainsLxgwNerdMono-BoldItalic.ttf` | Bold Italic | - |
+| `Pico-Regular.ttf` | Regular | Daily coding (Recommended) |
+| `Pico-Medium.ttf` | Medium | Prefer slightly bolder font |
+| `Pico-Bold.ttf` | Bold | Headings/emphasis |
+| `Pico-Italic.ttf` | Italic | Comments/variables |
+| `Pico-MediumItalic.ttf` | Medium Italic | - |
+| `Pico-BoldItalic.ttf` | Bold Italic | - |
 
 ## Quick Start
 
@@ -72,37 +100,36 @@ uv sync
 # Build all styles
 uv run python build.py
 
-# Font Splitting (Web Fonts)
-# Default input: output/fonts, output: output/split
-uv run python split.py
+# Install the locked Web font tooling and generate subsets (requires Node.js)
+uv run python scripts/install_split.py --split
 ```
 
 ### Using Docker
 
 ```bash
 # Build image
-docker build -t jetbrains-lxgw-nerd-mono .
+docker build -t pico-mono .
 
 # Run build
 docker run --rm \
     -v $(pwd)/fonts:/app/fonts \
     -v $(pwd)/output:/app/output \
-    jetbrains-lxgw-nerd-mono
+    pico-mono
 
 # Build specific styles
 docker run --rm \
     -v $(pwd)/fonts:/app/fonts \
     -v $(pwd)/output:/app/output \
-    jetbrains-lxgw-nerd-mono --styles Regular,Medium
+    pico-mono --styles Regular,Medium
 ```
 
 ## Source Fonts
 
 Place the following fonts in the `fonts/` directory:
 
-### JetBrains Mono NerdFont (v3.4.0)
+### JetBrains Mono NerdFont (v3.5.1)
 
-Download from [Nerd Fonts release](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip), extract and place these files:
+Download from [Nerd Fonts release](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip), extract and place these files:
 
 - `JetBrainsMonoNLNerdFontMono-Regular.ttf`
 - `JetBrainsMonoNLNerdFontMono-Medium.ttf`
@@ -111,15 +138,15 @@ Download from [Nerd Fonts release](https://github.com/ryanoasis/nerd-fonts/relea
 - `JetBrainsMonoNLNerdFontMono-Bold.ttf`
 - `JetBrainsMonoNLNerdFontMono-BoldItalic.ttf`
 
-### LXGW WenKai Mono GB Screen (v1.521)
+### LXGW WenKai Mono GB Screen (v1.530)
 
-Download directly: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.521/LXGWWenKaiMonoGBScreen.ttf)
+Download directly: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.530/LXGWWenKaiMonoGBScreen.ttf)
 
 - `LXGWWenKaiMonoGBScreen.ttf` - Used for Regular/Italic/Medium/MediumItalic styles
 
-### LXGW ZhenKai GB (for Bold weights)
+### LXGW ZhenKai GB (v0.825, for Bold weights)
 
-Download directly: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases)
+Download directly: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases/download/v0.825/LXGWZhenKaiGB-Regular.ttf)
 
 - `LXGWZhenKaiGB-Regular.ttf` - Used for Bold/BoldItalic styles to provide heavier CJK strokes
 
@@ -134,7 +161,7 @@ The project includes a `split.py` script that uses [cn-font-split](https://githu
 
 ```bash
 # Install cn-font-split (requires Node.js)
-npm install -g cn-font-split
+uv run python scripts/install_split.py
 
 # Run split script (processes all fonts in output/fonts)
 uv run python split.py
@@ -148,7 +175,7 @@ Output structure:
 ```
 output/split/
 ├── all.css                  # Merged CSS importing all fonts
-├── JetBrainsLxgwNerdMono-Regular/
+├── Pico-Regular/
 │   ├── result.css           # Single font CSS
 │   ├── index.html           # Test page (contains splitting report)
 │   └── *.woff2              # Font subsets
@@ -209,12 +236,12 @@ The `config.yaml` file provides centralized configuration for the build process:
 ```yaml
 # Font metadata
 font:
-  family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
-  author: "lvbibir"
-  copyright: "Copyright (c) 2024 lvbibir"
-  description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio."
-  url: "https://github.com/lvbibir/JetBrainsLxgwNerdMono"
+  family_name: "Pico"
+  version: "1.8"
+  author: "Pcodcsja (Pico derivative maintainer)"
+  copyright: "Copyright (c) 2026 Pcodcsja (Pico modifications). Source font copyright notices are retained."
+  description: "Pico, an independently maintained 2:1 CJK monospace derivative. Not an official release of the source projects."
+  url: "https://github.com/Pcodcsja/PicoMono"
   license: "This font is licensed under the SIL Open Font License, Version 1.1."
   license_url: "https://openfontlicense.org"
 
@@ -306,9 +333,9 @@ options:
 
 ## License
 
-This project is for personal use. Please check the licenses of the source fonts:
+Generated Pico fonts are distributed under the [SIL Open Font License 1.1](OFL.txt), retaining original copyright and designer attribution. Include `OFL.txt`, [NOTICE.md](NOTICE.md) and `licenses/` with TTF files and WOFF2 subsets; the build scripts copy these automatically.
 
-- JetBrains Mono: OFL-1.1
-- LXGW WenKai: OFL-1.1
-- LXGW ZhenKai: OFL-1.1
-- Nerd Fonts: MIT
+- JetBrains Mono, LXGW WenKai and LXGW ZhenKai: OFL-1.1; original license text and source notices are in `licenses/`.
+- Nerd Fonts: fonts, icon components and tool code have distinct licensing. They must not be collectively labeled MIT; applicable notices and component licenses are bundled.
+- The merge implementation derives from [lvbibir/JetBrainsLxgwNerdMono](https://github.com/lvbibir/JetBrainsLxgwNerdMono), whose contribution credit is retained. The font OFL declaration does not relicense inherited scripts or third-party tools.
+- Pico is an independent derivative without a claim of endorsement. Source names identify origin and attribution only.

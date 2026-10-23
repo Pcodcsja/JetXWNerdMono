@@ -1,17 +1,22 @@
-# JetBrainsLxgwNerdMono Build Configuration
+# Pico Build Configuration
 
 # Font metadata
 font:
-  family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
-  author: "lvbibir"
-  copyright: "Copyright (c) 2024 lvbibir"
-  description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio. English from JetBrains Mono, CJK from LXGW WenKai."
-  url: "https://github.com/lvbibir/JetBrainsLxgwNerdMono"
-  license: "This font is licensed under the SIL Open Font License, Version 1.1. JetBrains Mono: OFL-1.1, LXGW WenKai: OFL-1.1, Nerd Fonts: MIT."
+  family_name: "Pico"
+  version: "1.8"
+  author: "Pcodcsja (Pico derivative maintainer)"
+  copyright: "Copyright (c) 2026 Pcodcsja (Pico modifications). Source font copyright notices are retained."
+  description: "Pico is an independently maintained 2:1 CJK monospace derivative based on JetBrains Mono Nerd Fonts, LXGW WenKai Mono GB Screen and LXGW ZhenKai GB. Not an official release of the source projects."
+  url: "https://github.com/Pcodcsja/PicoMono"
+  license: "This Font Software is licensed under the SIL Open Font License, Version 1.1. See OFL.txt and the accompanying source license notices."
   license_url: "https://openfontlicense.org"
 
 # Source fonts directory
+#
+# Bundled source versions:
+# - JetBrains Mono Nerd Font v3.5.1
+# - LXGW WenKai Mono GB Screen v1.530
+# - LXGW ZhenKai GB v0.825 (latest release with the GB-Regular asset)
 fonts_dir: "fonts"
 
 # Styles configuration

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-JetBrainsLxgwNerdMono Font Builder
+Pico Font Builder
 
 Build merged font with:
 - English characters from JetBrains Mono NerdFont
@@ -27,8 +27,9 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.config import FontConfig
+from src.licensing import copy_font_licenses, write_source_font_notices
 from src.merge import merge_fonts, center_cjk_glyphs, scale_nerd_icons
-from src.utils import update_font_names, verify_glyph_width
+from src.utils import update_font_names, verify_glyph_width, normalize_zero_width_glyphs
 
 
 def load_config(config_path: Path) -> Dict[str, Any]:
@@ -40,11 +41,14 @@ def load_config(config_path: Path) -> Dict[str, Any]:
     Returns:
         Configuration dictionary
     """
-    if not config_path.exists():
-        return {}
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
     with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+        config = yaml.safe_load(f) or {}
+    if not isinstance(config, dict):
+        raise ValueError("Configuration must be a YAML mapping")
+    return config
 
 
 def get_config_value(yaml_config: Dict[str, Any], *keys: str, default: Any = None) -> Any:
@@ -109,6 +113,7 @@ def build_single_font(
     # Center CJK glyphs
     print("  Centering CJK glyphs...")
     center_cjk_glyphs(merged_font, config)
+    normalize_zero_width_glyphs(merged_font)
 
     # Update font names
     postscript_name = f"{config.family_name_compact}-{style}"
@@ -131,14 +136,12 @@ def build_single_font(
 
     # Verify glyph widths
     print("  Verifying glyph widths...")
-    try:
-        verify_glyph_width(
-            font=merged_font,
-            expected_widths=[0, config.en_width, config.cn_width],
-            file_name=postscript_name,
-        )
-    except ValueError as e:
-        print(f"  Warning: {e}")
+    verify_glyph_width(
+        font=merged_font,
+        expected_widths=[0, config.en_width, config.cn_width],
+        file_name=postscript_name,
+        config=config,
+    )
 
     # Save font
     output_path = output_dir / f"{postscript_name}.ttf"
@@ -154,7 +157,7 @@ def main():
     default_config_path = Path(__file__).parent / "config.yaml"
 
     parser = argparse.ArgumentParser(
-        description="Build JetBrainsLxgwNerdMono font",
+        description="Build Pico font",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -213,22 +216,19 @@ Configuration priority: CLI args > config.yaml > defaults
         or get_config_value(yaml_config, "build", "styles")
         or ",".join(styles_config.keys())
     )
-    fonts_dir = (
-        args.fonts_dir
-        or Path(get_config_value(yaml_config, "fonts_dir") or "fonts")
-    )
-    output_dir = (
-        args.output_dir
-        or Path(get_config_value(yaml_config, "build", "output_dir") or "output/fonts")
-    )
+    config_dir = args.config.resolve().parent
+    fonts_dir = args.fonts_dir or config_dir / (get_config_value(yaml_config, "fonts_dir") or "fonts")
+    output_dir = args.output_dir or config_dir / (get_config_value(yaml_config, "build", "output_dir") or "output/fonts")
     parallel = (
         args.parallel
         if args.parallel is not None
         else get_config_value(yaml_config, "build", "parallel", default=1)
     )
+    if type(parallel) is not int or parallel < 1:
+        parser.error("--parallel must be a positive integer")
 
     # Font metadata from config
-    family_name = get_config_value(yaml_config, "font", "family_name") or "JetBrainsLxgwNerdMono"
+    family_name = get_config_value(yaml_config, "font", "family_name") or "Pico"
     version = get_config_value(yaml_config, "font", "version") or "1.0"
     en_width = get_config_value(yaml_config, "width", "en_width", default=600)
     cn_width = get_config_value(yaml_config, "width", "cn_width", default=1200)
@@ -255,7 +255,9 @@ Configuration priority: CLI args > config.yaml > defaults
     )
 
     # Parse styles to build
-    styles = [s.strip() for s in styles_str.split(",")]
+    styles = list(dict.fromkeys(s.strip() for s in styles_str.split(",") if s.strip()))
+    if not styles:
+        parser.error("At least one style must be selected")
     valid_styles = list(styles_config.keys())
 
     for style in styles:
@@ -364,6 +366,11 @@ Configuration priority: CLI args > config.yaml > defaults
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
     print(f"Generated manifest: {manifest_path}")
+    copy_font_licenses(output_dir)
+    write_source_font_notices(
+        (paths[key] for paths in font_paths.values() for key in ("en_font_path", "cn_font_path")),
+        output_dir / "licenses" / "SOURCE-FONT-NOTICES.txt",
+    )
 
     print(f"\nBuild complete! Fonts saved to: {output_dir}")
 

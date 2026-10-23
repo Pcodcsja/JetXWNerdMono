@@ -5,13 +5,17 @@ import json
 import shutil
 import subprocess
 import logging
+import tempfile
+
+from fontTools.ttLib import TTFont
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.config import FontConfig
+from src.licensing import copy_font_licenses
 
 logger = logging.getLogger(__name__)
 
@@ -25,125 +29,111 @@ STYLE_DISPLAY_NAMES = {
     "BoldItalic": "Bold Italic",
 }
 
-# All supported style keys, sorted by length descending for matching
-STYLE_KEYS = ["MediumItalic", "BoldItalic", "Medium", "Italic", "Bold", "Regular"]
-
-
 def check_cn_font_split_installed() -> bool:
     """Check if cn-font-split is installed."""
-    return shutil.which("cn-font-split") is not None
+    return bool(get_cn_font_split_command())
 
 
-def enhance_local_font_matching(css_path: Path, family_name: str, style_key: str) -> None:
-    """Enhance local() values in CSS for better local font matching.
+def get_cn_font_split_command() -> List[str]:
+    """Resolve the project-local tool or an installed command.
 
-    Browsers may use different font names for local() matching:
-    - Family name: "JetBrainsLxgwNerdMono"
-    - Full name: "JetBrainsLxgwNerdMono Regular"
-    - PostScript name: "JetBrainsLxgwNerdMono-Regular"
-
-    This function replaces single local() with multiple local() values.
+    Prefer the pinned project-local WASM core, avoiding native FFI crashes.
     """
-    if not css_path.exists():
-        logger.warning(f"CSS file not found: {css_path}")
-        return
+    root = Path(__file__).parent
+    wasm_core = root / "_tools/node_modules/cn-font-split/dist/libffi-wasm32-wasip1.wasm"
+    if wasm_core.is_file() and shutil.which("node"):
+        return [shutil.which("node"), str(root / "src/split_wasm.cjs")]
+    executable = shutil.which("cn-font-split")
+    if not executable:
+        local_tool = root / "_tools" / ("cn-font-split.cmd" if sys.platform == "win32" else "bin/cn-font-split")
+        if local_tool.is_file():
+            executable = str(local_tool)
+    return [executable] if executable else []
 
-    display_name = STYLE_DISPLAY_NAMES.get(style_key, "Regular")
-    # PostScript name uses hyphen, no space
-    postscript_name = f"{family_name}-{style_key}"
-    # Full name uses space
-    full_name = f"{family_name} {display_name}"
 
-    # Build replacement with multiple local() values
-    # Order: PostScript name first (most specific), then full name, then family name
-    local_values = f'local("{postscript_name}"),local("{full_name}"),local("{family_name}")'
-
+def enhance_local_font_matching(
+    css_path: Path, family_name: str, style_key: str,
+    full_name: str | None = None, postscript_name: str | None = None,
+) -> None:
+    """Use exact face names only; a family name can select the wrong weight."""
+    if not css_path.is_file():
+        raise FileNotFoundError(f"CSS file not found: {css_path}")
+    full_name = full_name or f"{family_name} {STYLE_DISPLAY_NAMES.get(style_key, style_key)}"
+    postscript_name = postscript_name or f"{family_name}-{style_key}"
+    local_values = ",".join(f"local({json.dumps(name, ensure_ascii=False)})"
+                            for name in dict.fromkeys((postscript_name, full_name)))
     content = css_path.read_text(encoding="utf-8")
+    pattern = r"(?:local\((?:[^)]+)\)\s*,\s*)+(?=url\()"
+    content = re.sub(pattern, lambda match: local_values + ",", content)
+    css_path.write_text(content, encoding="utf-8")
 
-    # Replace local("FamilyName") with multiple local() values
-    # Pattern matches: local("FamilyName"),url(
-    pattern = rf'local\("{re.escape(family_name)}"\),url\('
-    replacement = f'{local_values},url('
 
-    new_content = re.sub(pattern, replacement, content)
-
-    if new_content != content:
-        css_path.write_text(new_content, encoding="utf-8")
-        logger.info(f"Enhanced local() matching in {css_path.name}")
+def read_font_metadata(font_path: Path) -> dict:
+    """Use the built face's names, weight and style instead of guessing filenames."""
+    with TTFont(font_path) as font:
+        names = font["name"]
+        family = names.getDebugName(16) or names.getDebugName(1)
+        style = names.getDebugName(17) or names.getDebugName(2) or "Regular"
+        full_name = names.getDebugName(4)
+        postscript_name = names.getDebugName(6)
+        if not all((family, full_name, postscript_name)):
+            raise ValueError(f"Missing font names in {font_path}")
+        italic = bool(font["OS/2"].fsSelection & 1 or font["head"].macStyle & 2)
+        return {"family": family, "style": style, "full_name": full_name,
+                "postscript_name": postscript_name,
+                "weight": str(font["OS/2"].usWeightClass),
+                "css_style": "italic" if italic else "normal"}
 
 
 def split_font(
-    font_path: Path,
-    output_base_dir: Path,
-    config: FontConfig,
+    font_path: Path, output_base_dir: Path, config: FontConfig,
     test_html: bool = True,
 ) -> Path:
-    """Split a single font file using cn-font-split.
-
-    Args:
-        font_path: Path to the font file
-        output_base_dir: Base directory for output (e.g., output/split)
-        config: FontConfig object
-        test_html: Whether to generate a test HTML file
-
-    Returns:
-        Path to the output directory for this font
-    """
-    if not check_cn_font_split_installed():
-        raise RuntimeError(
-            "cn-font-split is not installed. Please run 'npm install -g cn-font-split' first."
-        )
-
-    font_name = font_path.stem
-    output_dir = output_base_dir / font_name
-
-    # Determine font weight and style for CSS
-    style_key = None
-    # Use pre-sorted style keys (longest first) to ensure proper matching
-    for key in STYLE_KEYS:
-        if key in font_name:
-            style_key = key
-            break
-
-    # Default values
-    font_weight = "400"
-    font_style = "normal"
-
-    if style_key:
-        if "Bold" in style_key:
-            font_weight = "700"
-        elif "Medium" in style_key:
-            font_weight = "500"
-        if "Italic" in style_key:
-            font_style = "italic"
-
+    """Generate and validate a face in a temporary directory before publishing."""
+    command = get_cn_font_split_command()
+    if not command:
+        raise RuntimeError("cn-font-split is not installed. Run 'uv run python scripts/install_split.py'.")
+    metadata = read_font_metadata(font_path)
+    output_base_dir.mkdir(parents=True, exist_ok=True)
+    output_base_dir = output_base_dir.resolve()
+    output_dir = output_base_dir / font_path.stem
+    # Refuse an existing symlink/junction pointing outside the intended output.
+    if output_dir.resolve().parent != output_base_dir:
+        raise ValueError(f"Output is outside the split directory: {output_dir}")
     logger.info(f"Splitting font: {font_path}")
-    logger.info(f"Output directory: {output_dir}")
-
-    cmd = [
-        "cn-font-split",
-        "run",
-        "-i", str(font_path),
-        "-o", str(output_dir),
-        "--css.fontFamily", config.family_name,
-        "--css.fontWeight", font_weight,
-        "--css.fontStyle", font_style,
-        "--css.fontDisplay", "swap",
-        "--renameOutputFont", "[index].[ext]",
-        "--testHtml", str(test_html).lower(),
-    ]
-
-    try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        logger.info(f"Successfully split {font_name}")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to split {font_name}: {e.stderr}")
-        raise
-
-    # Enhance local() matching in generated CSS
-    css_path = output_dir / "result.css"
-    enhance_local_font_matching(css_path, config.family_name, style_key or "Regular")
-
+    with tempfile.TemporaryDirectory(prefix=".font-split-", dir=output_base_dir) as temp_dir:
+        staging = Path(temp_dir) / font_path.stem
+        cmd = command + [
+            "run", "-i", str(font_path.resolve()), "-o", str(staging),
+            "--css.fontFamily", metadata["family"],
+            "--css.fontWeight", metadata["weight"],
+            "--css.fontStyle", metadata["css_style"],
+            "--css.fontDisplay", "swap", "--renameOutputFont", "[index].[ext]",
+            "--testHtml", str(test_html).lower(),
+        ]
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to split {font_path.stem}: {e.stderr or e.stdout}")
+            raise
+        css_path = staging / "result.css"
+        enhance_local_font_matching(css_path, metadata["family"], metadata["style"],
+                                    metadata["full_name"], metadata["postscript_name"])
+        subsets = list(staging.glob("*.woff2"))
+        if not subsets:
+            raise RuntimeError(f"No WOFF2 files generated for {font_path.name}")
+        for subset in subsets:
+            with subset.open("rb") as stream:
+                if stream.read(4) != b"wOF2":
+                    raise ValueError(f"Invalid WOFF2 file: {subset.name}")
+        if test_html and not (staging / "index.html").is_file():
+            raise RuntimeError(f"No preview generated for {font_path.name}")
+        # Only replace this known generated face directory after a successful run.
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
+        staging.rename(output_dir)
+    logger.info(f"Successfully split {font_path.stem} ({len(subsets)} subsets)")
     return output_dir
 
 
@@ -160,8 +150,7 @@ def generate_merged_css(split_dirs: List[Path], output_file: Path) -> None:
     for split_dir in split_dirs:
         css_file = split_dir / "result.css"
         if not css_file.exists():
-            logger.warning(f"CSS file not found: {css_file}")
-            continue
+            raise FileNotFoundError(f"CSS file not found: {css_file}")
 
         font_name = split_dir.name
         # Use relative path for import
@@ -184,24 +173,43 @@ def split_all_fonts(
         output_dir: Base directory for split output (e.g., output/split/)
         config: FontConfig object
     """
+    if not input_dir.is_dir():
+        raise FileNotFoundError(f"Input directory not found: {input_dir}")
+    manifest_path = input_dir / "fonts-manifest.json"
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        filenames = [face["filename"] for face in manifest["fonts"]]
+        font_files = []
+        for filename in dict.fromkeys(filenames):
+            if not isinstance(filename, str) or Path(filename).name != filename or not filename.lower().endswith(".ttf"):
+                raise ValueError("Manifest font filenames must be local .ttf filenames")
+            path = input_dir / filename
+            if path.resolve().parent != input_dir.resolve() or not path.is_file():
+                raise ValueError(f"Missing or external manifest font: {filename}")
+            font_files.append(path)
+    else:
+        font_files = sorted(input_dir.glob("*.ttf"))
+    if not font_files:
+        raise ValueError(f"No .ttf files found in {input_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    font_files = list(input_dir.glob("*.ttf"))
-    if not font_files:
-        logger.warning(f"No .ttf files found in {input_dir}")
-        return
-
     split_dirs = []
+    failures = []
     for font_file in font_files:
         try:
             split_dir = split_font(font_file, output_dir, config)
             split_dirs.append(split_dir)
         except Exception as e:
             logger.error(f"Error processing {font_file}: {e}")
+            failures.append(font_file.name)
 
     # Generate merged CSS
-    if split_dirs:
-        generate_merged_css(split_dirs, output_dir / "all.css")
+    if failures:
+        raise RuntimeError(f"Failed to split {len(failures)} font(s): {', '.join(failures)}")
+    generate_merged_css(split_dirs, output_dir / "all.css")
+    # Prefer the notices from the actual TTF build, including custom source fonts.
+    notice_root = input_dir if (input_dir / "OFL.txt").is_file() else None
+    copy_font_licenses(output_dir, source_root=notice_root)
 
 
 def main():
@@ -212,13 +220,13 @@ def main():
     parser.add_argument(
         "--input-dir",
         type=Path,
-        default=Path("output/fonts"),
+        default=Path(__file__).parent / "output/fonts",
         help="Input directory containing built fonts (default: output/fonts/)",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("output/split"),
+        default=Path(__file__).parent / "output/split",
         help="Output directory for split fonts (default: output/split/)",
     )
 

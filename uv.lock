@@ -60,8 +60,8 @@ wheels = [
 ]
 
 [[package]]
-name = "jetbrains-lxgw-nerd-mono"
-version = "1.0.0"
+name = "pico-mono"
+version = "1.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "fonttools" },

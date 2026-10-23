@@ -1,6 +1,6 @@
 [project]
-name = "jetbrains-lxgw-nerd-mono"
-version = "1.0.0"
+name = "pico-mono"
+version = "1.8.0"
 description = "JetBrains Mono + LXGW WenKai Mono + NerdFont - 2:1 CJK monospace font"
 readme = "README.md"
 requires-python = ">=3.10"

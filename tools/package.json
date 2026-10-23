@@ -1,0 +1,8 @@
+{
+  "name": "pico-font-build-tools",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "cn-font-split": "7.4.3"
+  }
+}

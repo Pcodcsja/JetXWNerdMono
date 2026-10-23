@@ -1,1 +1,1 @@
-# JetBrainsLxgwNerdMono font builder
+# Pico font builder

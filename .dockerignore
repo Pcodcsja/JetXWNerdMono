@@ -1,0 +1,8 @@
+.git
+.venv
+_tools
+_npm-cache
+output
+__pycache__
+**/__pycache__
+fonts

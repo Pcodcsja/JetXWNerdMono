@@ -1,8 +1,8 @@
-# JetBrainsLxgwNerdMono
+# Pico
 
 [English](README.md) | [中文](README_zh.md)
 
-JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 中英文等宽字体
+Pico 是由 Pcodcsja 独立维护的中英文 2:1 等宽衍生字体，基于 JetBrains Mono Nerd Fonts、霞鹜文楷和霞鹜臻楷制作，包含字符宽度调整、中文斜体处理和网页字体分包。Pico 非上述原作者或项目的官方发行版。
 
 ## 特性
 
@@ -16,19 +16,47 @@ JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 中英文等宽字体
 - 支持 YAML 配置文件, 可通过命令行覆盖
 - 支持多字重中文字体映射 (可选)
 
+## 1.8 更新 (2026-10-23)
+
+- 修正传统 Windows 四样式分组：常规、斜体、粗体、粗斜体归入 `Pico`，中等和中等斜体归入 `Pico Medium`；支持现代字体分组的软件仍统一显示为 `Pico`。
+- 为六款字体补全简体中文完整名称和样式名称，包括“Pico 粗体”“Pico 斜体”“Pico 粗斜体”。
+- 同步名称和 Windows/macOS 粗体、斜体、常规标记，避免中等字重与常规字重冲突。
+
+Windows 字体预览中的完整名称分别为：`Pico 常规`、`Pico 中等`、`Pico 粗体`、`Pico 斜体`、`Pico 中等斜体`、`Pico 粗斜体`。英文完整名称仍保留对应的 Regular、Medium、Bold、Italic 等样式名称。部分软件按字体家族分组时显示 `Pico`，具体字重和斜体在样式栏中选择。
+
+## 1.7 更新 (2026-10-23)
+
+- 成品字体独立命名为 **Pico**；同步更新内部名称、TTF 文件名、WOFF2 字体族、预览页和打包示例。
+- 保留两套源字体的版权、商标声明与设计者署名，将修改版维护者单独标注。
+- 桌面和网页输出自动附带 OFL、来源说明及适用的组件许可证。
+- 原仓库地址保持不变；旧字体文件及 CSS 引用需要改为 `Pico`。
+
+## 1.6 更新 (2026-10-21)
+
+- 修复 Italic、MediumItalic、BoldItalic 的中文未倾斜问题：按英文源字体的倾角变换中文轮廓，当前为向右 9°，并保持 2:1 字宽。
+- 中文使用轮廓倾斜生成；若中文源字体已有倾角，只补偿与英文的倾角差。
+
+## 1.5 更新 (2026-10-21)
+
+- 修复全角大括号、半角片假名字宽，并将零宽字符的占位宽度归零。
+- 合入源字体已有的假名、韩文、兼容汉字及汉字扩展 H/I；不同字重使用不同源字体，字符覆盖可能有差别。
+- 合并时独立处理复合字形与同名字形，并按 Unicode 字符类别校验字宽。
+- 分包从字体元数据读取名称和字重；空输入或构建失败会返回错误。
+- 通过 npm 锁文件与 WASM 核心 SHA-256 固定分包环境。执行 `uv run python scripts/install_split.py --split` 可安装后自动生成 Web 字体。
+
 ## 下载
 
 ### 快速选择
 
 | 使用场景 | 下载文件 |
 |---------|---------|
-| 💻 **本地安装** (编辑器/IDE/终端) | `JetBrainsLxgwNerdMono.zip` |
-| 🌐 **网页使用** (Web Fonts) | `JetBrainsLxgwNerdMono-split-woff2.zip` |
+| 💻 **本地安装** (编辑器/IDE/终端) | `Pico.zip` |
+| 🌐 **网页使用** (Web Fonts) | `Pico-split-woff2.zip` |
 | 📄 **只需单个字重** | 选择对应的 `.ttf` 单文件 |
 
 ### 文件说明
 
-#### `JetBrainsLxgwNerdMono.zip`
+#### `Pico.zip`
 > **推荐大多数用户下载**
 
 包含 6 个字重的完整 TTF 字体文件, 适用于:
@@ -38,7 +66,7 @@ JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 中英文等宽字体
 
 包含字重: Regular, Medium, Italic, MediumItalic, Bold, BoldItalic
 
-#### `JetBrainsLxgwNerdMono-split-woff2.zip`
+#### `Pico-split-woff2.zip`
 > **Web 开发者专用**
 
 经过 [cn-font-split](https://github.com/KonghaYao/cn-font-split) 分包优化的 WOFF2 格式, 适用于:
@@ -54,12 +82,12 @@ JetBrains Mono NerdFont + LXGW WenKai Mono = 2:1 中英文等宽字体
 
 | 文件名 | 字重 | 适用场景 |
 |-------|------|---------|
-| `JetBrainsLxgwNerdMono-Regular.ttf` | 常规 | 日常编码 (推荐) |
-| `JetBrainsLxgwNerdMono-Medium.ttf` | 中等 | 偏好稍粗字体 |
-| `JetBrainsLxgwNerdMono-Bold.ttf` | 粗体 | 标题/强调 |
-| `JetBrainsLxgwNerdMono-Italic.ttf` | 斜体 | 注释/变量 |
-| `JetBrainsLxgwNerdMono-MediumItalic.ttf` | 中等斜体 | - |
-| `JetBrainsLxgwNerdMono-BoldItalic.ttf` | 粗斜体 | - |
+| `Pico-Regular.ttf` | 常规 | 日常编码 (推荐) |
+| `Pico-Medium.ttf` | 中等 | 偏好稍粗字体 |
+| `Pico-Bold.ttf` | 粗体 | 标题/强调 |
+| `Pico-Italic.ttf` | 斜体 | 注释/变量 |
+| `Pico-MediumItalic.ttf` | 中等斜体 | - |
+| `Pico-BoldItalic.ttf` | 粗斜体 | - |
 
 ## 快速开始
 
@@ -72,37 +100,36 @@ uv sync
 # 构建所有字重
 uv run python build.py
 
-# 字体分包 (Web 字体)
-# 默认读取 output/fonts 目录下的字体, 并输出到 output/split 目录
-uv run python split.py
+# 安装固定版本的分包工具并生成 Web 字体（需要 Node.js）
+uv run python scripts/install_split.py --split
 ```
 
 ### 使用 Docker
 
 ```bash
 # 构建镜像
-docker build -t jetbrains-lxgw-nerd-mono .
+docker build -t pico-mono .
 
 # 运行构建
 docker run --rm \
     -v $(pwd)/fonts:/app/fonts \
     -v $(pwd)/output:/app/output \
-    jetbrains-lxgw-nerd-mono
+    pico-mono
 
 # 构建指定字重
 docker run --rm \
     -v $(pwd)/fonts:/app/fonts \
     -v $(pwd)/output:/app/output \
-    jetbrains-lxgw-nerd-mono --styles Regular,Medium
+    pico-mono --styles Regular,Medium
 ```
 
 ## 源字体
 
 请将以下字体文件放置在 `fonts/` 目录:
 
-### JetBrains Mono NerdFont (v3.4.0)
+### JetBrains Mono NerdFont (v3.5.1)
 
-从 [Nerd Fonts 发布页面](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.4.0/JetBrainsMono.zip) 下载,解压后放置以下文件:
+从 [Nerd Fonts 发布页面](https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/JetBrainsMono.zip) 下载,解压后放置以下文件:
 
 - `JetBrainsMonoNLNerdFontMono-Regular.ttf`
 - `JetBrainsMonoNLNerdFontMono-Medium.ttf`
@@ -111,15 +138,15 @@ docker run --rm \
 - `JetBrainsMonoNLNerdFontMono-Bold.ttf`
 - `JetBrainsMonoNLNerdFontMono-BoldItalic.ttf`
 
-### 霞鹜文楷屏幕阅读版等宽 GB (v1.521)
+### 霞鹜文楷屏幕阅读版等宽 GB (v1.530)
 
-直接下载: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.521/LXGWWenKaiMonoGBScreen.ttf)
+直接下载: [LXGWWenKaiMonoGBScreen.ttf](https://github.com/lxgw/LxgwWenKai-Screen/releases/download/v1.530/LXGWWenKaiMonoGBScreen.ttf)
 
 - `LXGWWenKaiMonoGBScreen.ttf` - 用于 Regular/Italic/Medium/MediumItalic 字重
 
-### 霞鹜臻楷 GB (用于 Bold 字重)
+### 霞鹜臻楷 GB (v0.825, 用于 Bold 字重)
 
-直接下载: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases)
+直接下载: [LXGWZhenKaiGB-Regular.ttf](https://github.com/lxgw/LxgwZhenKai/releases/download/v0.825/LXGWZhenKaiGB-Regular.ttf)
 
 - `LXGWZhenKaiGB-Regular.ttf` - 用于 Bold/BoldItalic 字重, 提供更粗的中文笔画
 
@@ -134,7 +161,7 @@ docker run --rm \
 
 ```bash
 # 安装 cn-font-split (需要 Node.js)
-npm install -g cn-font-split
+uv run python scripts/install_split.py
 
 # 运行分包脚本 (自动处理 output/fonts 下的所有字体)
 uv run python split.py
@@ -148,7 +175,7 @@ uv run python split.py --input-dir my_fonts --output-dir my_split_fonts
 ```
 output/split/
 ├── all.css                  # 合并所有字体的 CSS 引用
-├── JetBrainsLxgwNerdMono-Regular/
+├── Pico-Regular/
 │   ├── result.css           # 单个字体的 CSS
 │   ├── index.html           # 测试页面 (包含分包验证报告)
 │   └── *.woff2              # 字体子集
@@ -209,12 +236,12 @@ uv run python -m http.server 8000
 ```yaml
 # 字体元数据
 font:
-  family_name: "JetBrainsLxgwNerdMono"
-  version: "1.3"
-  author: "lvbibir"
-  copyright: "Copyright (c) 2024 lvbibir"
-  description: "JetBrains Mono NerdFont + LXGW WenKai Mono merged font with 2:1 CJK ratio."
-  url: "https://github.com/lvbibir/JetBrainsLxgwNerdMono"
+  family_name: "Pico"
+  version: "1.8"
+  author: "Pcodcsja (Pico derivative maintainer)"
+  copyright: "Copyright (c) 2026 Pcodcsja (Pico modifications). Source font copyright notices are retained."
+  description: "Pico, an independently maintained 2:1 CJK monospace derivative. Not an official release of the source projects."
+  url: "https://github.com/Pcodcsja/PicoMono"
   license: "This font is licensed under the SIL Open Font License, Version 1.1."
   license_url: "https://openfontlicense.org"
 
@@ -306,9 +333,9 @@ styles:
 
 ## 许可证
 
-本项目仅供个人使用。请查看源字体的许可证:
+生成的 Pico 字体按 [SIL Open Font License 1.1](OFL.txt) 分发，保留原字体版权和设计者署名。分发 TTF 或 WOFF2 时，请保留 `OFL.txt`、[NOTICE.md](NOTICE.md) 和 `licenses/`；构建脚本会自动复制这些文件。
 
-- JetBrains Mono: OFL-1.1
-- 霞鹜文楷: OFL-1.1
-- 霞鹜臻楷: OFL-1.1
-- Nerd Fonts: MIT
+- JetBrains Mono、霞鹜文楷、霞鹜臻楷：OFL-1.1，详见 `licenses/` 中的原始许可证和源字体声明。
+- Nerd Fonts：字体、图标组件和工具代码应分别说明许可证，不能统一写成 MIT。适用的来源声明和组件许可证随包附带。
+- 合并项目参考自 [lvbibir/JetBrainsLxgwNerdMono](https://github.com/lvbibir/JetBrainsLxgwNerdMono)，保留其代码贡献署名。字体 OFL 声明不代表对上游脚本或第三方工具重新授权。
+- Pico 为独立维护的衍生版，未声明获得原作者背书。来源名称仅用于版权、来源和致谢说明。
